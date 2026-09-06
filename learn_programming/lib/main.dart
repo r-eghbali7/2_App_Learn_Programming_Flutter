@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:learn_programming/features/home/screens/landing_screen.dart';
+import 'package:get/get.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main_screen.dart'; // صفحه اصلی شامل نوار پایین و خانه
+
+import 'features/home/screens/landing_screen.dart';
+import 'main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // بررسی وجود توکن در حافظه محلی
+  // لود کردن آدرس سرور از فایل .env
+  await dotenv.load(fileName: ".env");
+  
+  // بررسی لاگین بودن کاربر
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('access_token');
 
@@ -19,10 +25,15 @@ class DevFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    // تغییر MaterialApp به GetMaterialApp
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'DevFlow',
-      // اگر کاربر لاگین کرده بود MainScreen (خانه) را نشان بده، در غیر این صورت LandingScreen (ثبت‌نام/ورود)
+      title: 'CodeGlass',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        fontFamily: 'Vazirmatn', // اگر فونت فارسی دارید اینجا اضافه کنید
+      ),
+      // روتینگ هوشمند
       home: isLoggedIn ? const MainScreen() : const LandingScreen(),
     );
   }

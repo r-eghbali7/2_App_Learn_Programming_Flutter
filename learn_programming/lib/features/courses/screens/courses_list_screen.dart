@@ -1,100 +1,106 @@
+// lib/features/courses/screens/courses_list_screen.dart
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:get/get.dart';
+import '../controllers/course_controller.dart';
 import '../models/course_model.dart';
 import 'course_detail_screen.dart';
 
-class CoursesListScreen extends StatefulWidget {
+class CoursesListScreen extends StatelessWidget {
   const CoursesListScreen({super.key});
 
   @override
-  State<CoursesListScreen> createState() => _CoursesListScreenState();
-}
-
-class _CoursesListScreenState extends State<CoursesListScreen> {
-  bool isLoading = true;
-  String errorMessage = '';
-  List<CourseModel> courses = [];
-
-  final Color darkBg = const Color(0xFF12151C);
-  final Color surfaceColor = const Color(0xFF1E222D);
-  final Color primaryOrange = const Color(0xFFFF8C00);
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchCourses();
-  }
-
-  Future<void> _fetchCourses() async {
-    try {
-      final dio = Dio();
-      final response = await dio.get('http://127.0.0.1:8000/api/courses/list/');
-
-      if (response.statusCode == 200) {
-        setState(() {
-          courses = (response.data as List)
-              .map((c) => CourseModel.fromJson(c))
-              .toList();
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Courses List Error: $e');
-      setState(() {
-        errorMessage = 'خطا در دریافت لیست دوره‌ها';
-        isLoading = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // تزریق کنترلر به صفحه (GetX به صورت هوشمند این را مدیریت می‌کند)
+    final CourseController controller = Get.put(CourseController());
+
+    final Color darkBg = const Color(0xFF12151C);
+    final Color surfaceColor = const Color(0xFF1E222D);
+    final Color primaryOrange = const Color(0xFFFF8C00);
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: darkBg,
         body: SafeArea(
-          child: isLoading
-              ? Center(child: CircularProgressIndicator(color: primaryOrange))
-              : errorMessage.isNotEmpty
-              ? Center(
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                )
-              : Column(
+          // استفاده از Obx برای گوش دادن به تغییرات وضعیت (استیت) در کنترلر
+          child: Obx(() {
+            // حالت 1: در حال بارگذاری اطلاعات
+            if (controller.isLoading.value) {
+              return Center(
+                child: CircularProgressIndicator(color: primaryOrange),
+              );
+            }
+            
+            // حالت 2: دریافت اطلاعات با خطا مواجه شده است
+            if (controller.errorMessage.value.isNotEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildTopBar(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 20),
-                            _buildSearchBar(),
-                            const SizedBox(height: 24),
-                            ...courses.map(
-                              (course) => _buildCourseCard(course),
-                            ),
-                          ],
-                        ),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      controller.errorMessage.value,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => controller.fetchCourses(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryOrange,
+                      ),
+                      child: const Text(
+                        'تلاش مجدد',
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ],
                 ),
+              );
+            }
+
+            // حالت 3: اطلاعات با موفقیت دریافت شده است (نمایش لیست دوره‌ها)
+            return Column(
+              children: [
+                _buildTopBar(surfaceColor),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: 20),
+                        _buildSearchBar(surfaceColor),
+                        const SizedBox(height: 24),
+                        
+                        // رندر کردن لیست دوره‌ها از دیتای داخل کنترلر
+                        ...controller.coursesList.map(
+                          (course) => _buildCourseCard(course, surfaceColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildTopBar() {
+  // === متدهای مربوط به ساخت بخش‌های مختلف UI ===
+
+  Widget _buildTopBar(Color surfaceColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Row(
@@ -116,7 +122,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
             ),
           ),
           const Text(
-            'دوفلو',
+            'CodeGlass',
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -153,7 +159,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(Color surfaceColor) {
     return Container(
       height: 50,
       decoration: BoxDecoration(
@@ -180,15 +186,11 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     );
   }
 
-  Widget _buildCourseCard(CourseModel course) {
+  Widget _buildCourseCard(CourseModel course, Color surfaceColor) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CourseDetailScreen(courseId: course.id),
-          ),
-        );
+        // استفاده از Get.to برای مسیریابی به جای Navigator.push
+        Get.to(() => CourseDetailScreen(courseId: course.id));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
