@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../core/network/api_client.dart';
+
 
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key});
@@ -48,65 +50,62 @@ class _TicketScreenState extends State<TicketScreen> {
     }
   }
 
-  Future<void> _submitTicket() async {
-    if (_selectedSubject == null || _messageController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لطفاً موضوع و متن پیام را وارد کنید.'),
-          backgroundColor: Colors.orange,
+
+// در lib/features/tickets/screens/ticket_screen.dart
+
+Future<void> _submitTicket() async {
+  if (_selectedSubject == null || _messageController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('لطفاً موضوع و متن پیام را وارد کنید.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    // تغییر از Dio() معمولی به ApiClient().dio مرکزی تا توکن به طور خودکار ارسال شود
+    FormData formData = FormData.fromMap({
+      'subject': _selectedSubject,
+      'message': _messageController.text,
+      if (_selectedFile != null)
+        'attachment': await MultipartFile.fromFile(
+          _selectedFile!.path,
+          filename: _selectedFile!.path.split('/').last,
         ),
-      );
-      return;
-    }
+    });
 
-    setState(() => _isLoading = true);
+    final response = await ApiClient().dio.post(
+      'tickets/', // چون BaseUrl در ApiClient تنظیم شده است
+      data: formData,
+    );
 
-    try {
-      final dio = Dio();
-
-      // ساخت FormData برای ارسال متن و فایل به شکل چندبخشی (Multipart)
-      FormData formData = FormData.fromMap({
-        'subject': _selectedSubject,
-        'message': _messageController.text,
-        if (_selectedFile != null)
-          'attachment': await MultipartFile.fromFile(
-            _selectedFile!.path,
-            filename: _selectedFile!.path.split('/').last,
-          ),
-      });
-
-      // استفاده از 127.0.0.1 برای اجرای صحیح روی مرورگر کروم
-      final response = await dio.post(
-        'http://127.0.0.1:8000/api/tickets/',
-        data: formData,
-        // نکته: اگر اندپوینت شما نیاز به احراز هویت دارد، هدر زیر را فعال کنید:
-        // options: Options(headers: {'Authorization': 'Bearer YOUR_TOKEN'}),
-      );
-
-      // جنگو به صورت پیش‌فرض برای متد Create وضعیت 201 برمی‌گرداند
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تیکت شما با موفقیت ثبت شد.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context); // بازگشت به صفحه قبل
-      }
-    } catch (e) {
-      debugPrint('Ticket Error: $e');
+    if (response.statusCode == 201 || response.statusCode == 200) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('خطا در ارسال تیکت. لطفا دوباره تلاش کنید.'),
-          backgroundColor: Colors.red,
+          content: Text('تیکت شما با موفقیت ثبت شد.'),
+          backgroundColor: Colors.green,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      Navigator.pop(context);
     }
+  } catch (e) {
+    debugPrint('Ticket Error: $e');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('خطا در ارسال تیکت. لطفا دوباره تلاش کنید.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {

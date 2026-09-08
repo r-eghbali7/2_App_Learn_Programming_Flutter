@@ -2,21 +2,16 @@ class BannerModel {
   final int id;
   final String title;
   final String? imageUrl;
-  final String? link;
+  final int? courseId; // شناسه دوره مرتبط با بنر
 
-  BannerModel({
-    required this.id,
-    required this.title,
-    this.imageUrl,
-    this.link,
-  });
+  BannerModel({required this.id, required this.title, this.imageUrl, this.courseId});
 
   factory BannerModel.fromJson(Map<String, dynamic> json) {
     return BannerModel(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? 'بدون عنوان',
-      imageUrl: json['image'], // منطبق بر فیلد image در BannerSerializer
-      link: json['link'],
+      id: json['id'],
+      title: json['title'],
+      imageUrl: json['image'] ?? json['image_url'],
+      courseId: json['course'] ?? json['course_id'], // تطبیق با کلید خروجی جنگو
     );
   }
 }

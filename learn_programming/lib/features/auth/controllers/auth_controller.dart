@@ -1,7 +1,6 @@
 // lib/features/auth/controllers/auth_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/api_client.dart';
 import '../screens/otp_screen.dart';

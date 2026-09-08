@@ -1,6 +1,8 @@
+// lib/features/practices/screens/practice_editor_screen.dart
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import '../models/practice_model.dart'; // ایمپورت مدل
+import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_colors.dart';
+import '../models/practice_model.dart';
 
 class PracticeEditorScreen extends StatefulWidget {
   final int exerciseId;
@@ -14,17 +16,10 @@ class PracticeEditorScreen extends StatefulWidget {
 class _PracticeEditorScreenState extends State<PracticeEditorScreen> {
   final TextEditingController _codeController = TextEditingController();
   bool _isCodeRunning = false;
-  bool _isLoading = true; // وضعیت لودینگ اطلاعات تمرین
+  bool _isLoading = true;
 
-  PracticeModel? _exerciseData; // مدل دیتای تمرین
+  PracticeModel? _exerciseData;
   List<Widget> _consoleOutput = [];
-
-  // رنگ‌های تم
-  final Color darkBg = const Color(0xFF12151C);
-  final Color surfaceColor = const Color(0xFF1A1D24);
-  final Color consoleBg = const Color(0xFF161920);
-  final Color primaryOrange = const Color(0xFFFF8C00);
-  final Color textMuted = const Color(0xFF5C6370);
 
   @override
   void initState() {
@@ -32,13 +27,10 @@ class _PracticeEditorScreenState extends State<PracticeEditorScreen> {
     _fetchExerciseDetails();
   }
 
-  // --- دریافت اطلاعات تمرین و کدهای اولیه از سرور ---
+  // --- دریافت اطلاعات تمرین از سرور با ApiClient مرکزی ---
   Future<void> _fetchExerciseDetails() async {
     try {
-      final dio = Dio();
-      final response = await dio.get(
-        'http://10.0.2.2:8000/api/practices/${widget.exerciseId}/',
-      );
+      final response = await ApiClient().dio.get('practices/exercises/${widget.exerciseId}/');
 
       if (response.statusCode == 200) {
         setState(() {
@@ -48,7 +40,7 @@ class _PracticeEditorScreenState extends State<PracticeEditorScreen> {
             Text(
               'آماده برای اجرای کد...',
               style: TextStyle(
-                color: textMuted,
+                color: AppColors.textMuted,
                 fontSize: 13,
                 fontFamily: 'monospace',
               ),
@@ -58,7 +50,7 @@ class _PracticeEditorScreenState extends State<PracticeEditorScreen> {
         });
       }
     } catch (e) {
-      _loadMockData(); // در صورت قطع بودن بک‌اند
+      _loadMockData(); // در صورت قطع بودن بک‌اند برای جلوگیری از گیر کردن لودینگ
     }
   }
 
@@ -66,44 +58,16 @@ class _PracticeEditorScreenState extends State<PracticeEditorScreen> {
     setState(() {
       _exerciseData = PracticeModel(
         id: widget.exerciseId,
-        title: 'solution.js',
-        language: 'JS',
-        starterCode: '''/**
- * Definition for a binary tree node.
- * function TreeNode(val, left, right) {
- *     this.val = (val===undefined ? 0 : val)
- *     this.left = (left===undefined ? null : left)
- *     this.right = (right===undefined ? null : right)
- * }
- */
-/**
- * @param {TreeNode} root
- * @return {TreeNode}
- */
-var invertTree = function(root) {
-    if (root === null) {
-        return null;
-    }
-    
-    // Swap left and right
-    const temp = root.left;
-    root.left = root.right;
-    root.right = temp;
-    
-    invertTree(root.left);
-    invertTree(root.right);
-    
-    return root;
-};
-
-// Test cases running...''',
+        title: 'solution.py',
+        language: 'Python',
+        starterCode: '# کدهای خود را اینجا بنویسید\nprint("Hello World")',
       );
       _codeController.text = _exerciseData!.starterCode;
       _consoleOutput = [
         Text(
-          'آماده برای اجرای کد...',
+          'آماده برای اجرای کد (حالت آفلاین/ماک)...',
           style: TextStyle(
-            color: textMuted,
+            color: AppColors.textMuted,
             fontSize: 13,
             fontFamily: 'monospace',
           ),
@@ -119,63 +83,66 @@ var invertTree = function(root) {
     super.dispose();
   }
 
-  // --- شبیه‌سازی و ارسال کد به بک‌اند ---
+  // --- ارسال کد به بک‌اند و اجرای واقعی با Piston API ---
   Future<void> _runCode() async {
     setState(() {
       _isCodeRunning = true;
       _consoleOutput = [
         const Text(
-          '> node solution.js',
+          '> در حال ارسال و اجرای کد در سرور...',
           style: TextStyle(
             color: Color(0xFF64FFDA),
             fontSize: 13,
             fontFamily: 'monospace',
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'در حال اجرای تست‌ها...',
-          style: TextStyle(color: Colors.white70, fontSize: 13),
-        ),
       ];
     });
 
     try {
-      final dio = Dio();
-      await dio.post(
-        'http://10.0.2.2:8000/api/practices/submissions/',
+      final response = await ApiClient().dio.post(
+        'practices/submissions/',
         data: {
-          'exercise': widget.exerciseId,
-          'submitted_code': _codeController.text,
+          'exercise': widget.exerciseId, // باید یک عدد صحیح (Integer) باشد نه String
+          'submitted_code': _codeController.text, // متن کد
         },
       );
 
-      await Future.delayed(const Duration(seconds: 2));
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final feedback = response.data['feedback'] ?? 'اجرا با موفقیت انجام شد.';
+        final statusResult = response.data['status'] == 'passed' ? 'پذیرفته شده (Passed)' : 'خطا در اجرا (Failed)';
+        final isPassed = response.data['status'] == 'passed';
 
-      setState(() {
-        _consoleOutput.addAll([
-          const SizedBox(height: 8),
-          _buildTestResult('مورد تست ۱ با موفقیت انجام شد', '3ms'),
-          _buildTestResult('مورد تست ۲ با موفقیت انجام شد', '1ms'),
-          _buildTestResult('مورد تست ۳ با موفقیت انجام شد', '1ms'),
-          const SizedBox(height: 12),
-          const Text(
-            'وضعیت: پذیرفته شده',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+        setState(() {
+          _consoleOutput.addAll([
+            const SizedBox(height: 8),
+            Text(
+              feedback,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontFamily: 'monospace',
+              ),
             ),
-          ),
-        ]);
-      });
+            const SizedBox(height: 12),
+            Text(
+              'وضعیت: $statusResult',
+              style: TextStyle(
+                color: isPassed ? AppColors.successGreen : AppColors.errorRed,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ]);
+        });
+      }
     } catch (e) {
       setState(() {
         _consoleOutput.addAll([
           const SizedBox(height: 8),
           const Text(
             'خطا در ارتباط با سرور یا اجرای کد!',
-            style: TextStyle(color: Colors.redAccent, fontSize: 13),
+            style: TextStyle(color: AppColors.errorRed, fontSize: 13),
           ),
         ]);
       });
@@ -189,11 +156,10 @@ var invertTree = function(root) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: darkBg,
+        backgroundColor: AppColors.darkBg,
         appBar: _buildAppBar(),
-        // نوار پایین (BottomNavigationBar) حذف شد!
         body: _isLoading || _exerciseData == null
-            ? Center(child: CircularProgressIndicator(color: primaryOrange))
+            ? Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
             : SafeArea(
                 child: Column(
                   children: [
@@ -206,36 +172,19 @@ var invertTree = function(root) {
     );
   }
 
-  // --- کامپوننت‌های ماژولار ---
-
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: darkBg,
+      backgroundColor: AppColors.darkBg,
       elevation: 0,
-      title: const Center(
-        child: Text(
-          'دوفلو',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+      centerTitle: true,
+      title: const Text(
+        'محیط تمرین و کدنویسی',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
         ),
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-        onPressed: () {},
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundImage: const AssetImage('assets/images/avatar.jpg'),
-            backgroundColor: surfaceColor,
-          ),
-        ),
-      ],
     );
   }
 
@@ -243,9 +192,9 @@ var invertTree = function(root) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
-        color: surfaceColor,
+        color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         children: [
@@ -257,12 +206,9 @@ var invertTree = function(root) {
                 ElevatedButton(
                   onPressed: _isCodeRunning ? null : _runCode,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryOrange,
+                    backgroundColor: AppColors.primaryOrange,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -288,16 +234,11 @@ var invertTree = function(root) {
                         ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.05),
-                    ),
+                    border: Border.all(color: AppColors.borderLight),
                   ),
                   child: Row(
                     children: [
@@ -332,7 +273,6 @@ var invertTree = function(root) {
             ),
           ),
           const Divider(height: 1, color: Colors.white10),
-
           Expanded(
             child: Directionality(
               textDirection: TextDirection.ltr,
@@ -353,7 +293,7 @@ var invertTree = function(root) {
                             '${index + 1}',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: textMuted,
+                              color: AppColors.textMuted,
                               fontSize: 13,
                               fontFamily: 'monospace',
                               height: 1.5,
@@ -399,9 +339,9 @@ var invertTree = function(root) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        color: consoleBg,
+        color: const Color(0xFF161920),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -426,13 +366,13 @@ var invertTree = function(root) {
                     _buildMacDot(Colors.green),
                   ],
                 ),
-                Row(
+                const Row(
                   children: [
-                    const Text(
-                      'خروجی کنسول',
+                    Text(
+                      'خروجی کنسول سرور',
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Icon(
                       Icons.terminal_rounded,
                       color: Colors.white54,
@@ -464,39 +404,6 @@ var invertTree = function(root) {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.5),
         shape: BoxShape.circle,
-      ),
-    );
-  }
-
-  Widget _buildTestResult(String text, String time) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            color: Color(0xFF64FFDA),
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Color(0xFF64FFDA),
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '($time)',
-            style: const TextStyle(
-              color: Color(0xFF64FFDA),
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -1,139 +1,92 @@
+// lib/features/profile/screens/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/profile_model.dart'; // ایمپورت مدل پروفایل
-import '../../auth/screens/register_screen.dart'; // ایمپورت صفحه ورود برای هدایت پس از خروج
+import '../controllers/profile_controller.dart';
+import '../../auth/screens/register_screen.dart';
 import '../../tickets/screens/ticket_screen.dart';
 import '../../subscriptions/screens/subscription_screen.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../subscriptions/screens/purchases_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+
+
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isLoading = true;
-  ProfileModel? _userData; // استفاده از کلاس مدل به جای Map خام
-
-  // رنگ‌های تم
-  final Color darkBg = const Color(0xFF0F1115);
-  final Color surfaceColor = const Color(0xFF161A22);
-  final Color primaryOrange = const Color(0xFFFF8C00);
-  final Color textMuted = const Color(0xFF94A3B8);
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserProfile();
-  }
-
-  // --- دریافت اطلاعات پروفایل از سرور ---
-  Future<void> _fetchUserProfile() async {
-    try {
-      // کدهای واقعی برای اتصال به بک‌اند (فعلاً کامنت است تا با دیتای ماک تست کنید)
-      // final prefs = await SharedPreferences.getInstance();
-      // final token = prefs.getString('access_token');
-      // final dio = Dio();
-      // dio.options.headers['Authorization'] = 'Bearer $token';
-      // final response = await dio.get('http://10.0.2.2:8000/api/core/profile/');
-      // setState(() {
-      //   _userData = ProfileModel.fromJson(response.data);
-      //   _isLoading = false;
-      // });
-
-      // شبیه‌سازی تاخیر شبکه
-      await Future.delayed(const Duration(milliseconds: 600));
-      _loadMockData();
-    } catch (e) {
-      _loadMockData();
-    }
-  }
-
-  // --- خروج از حساب کاربری ---
-  Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // پاک کردن تمامی توکن‌ها و اطلاعات لوکال
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('با موفقیت خارج شدید.'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // هدایت به صفحه ثبت‌نام/ورود و پاک کردن تاریخچه صفحات
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
-      (route) => false,
-    );
-  }
-
-  void _loadMockData() {
-    setState(() {
-      _userData = ProfileModel(
-        fullName: 'الکس جانسون',
-        email: 'alex.johnson@devflow.io',
-        avatarUrl: 'assets/images/avatar_large.jpg',
-        streakDays: 14,
-        isProUser: true,
-      );
-      _isLoading = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // تزریق کنترلر پروفایل
+    final ProfileController controller = Get.put(ProfileController());
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: darkBg,
-        appBar: _buildAppBar(),
-        // BottomNavigationBar حذف شد! (در MainScreen مدیریت می‌شود)
-        body: _isLoading || _userData == null
-            ? Center(child: CircularProgressIndicator(color: primaryOrange))
-            : SafeArea(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 16.0,
+        backgroundColor: AppColors.darkBg,
+        appBar: _buildAppBar(context),
+        body: Obx(() {
+          if (controller.isLoading.value) {
+            return Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+          }
+
+          if (controller.errorMessage.value.isNotEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(controller.errorMessage.value, style: TextStyle(color: AppColors.textMuted)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => controller.fetchUserProfile(),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                    child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
                   ),
-                  child: Column(
-                    children: [
-                      _buildProfileCard(),
-                      const SizedBox(height: 24),
-                      _buildMenu(),
-                    ],
-                  ),
-                ),
+                ],
               ),
+            );
+          }
+
+          final userData = controller.userData.value;
+          if (userData == null) {
+            return const Center(child: Text('کاربری یافت نشد.', style: TextStyle(color: Colors.white54)));
+          }
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              child: Column(
+                children: [
+                  _buildProfileCard(userData),
+                  const SizedBox(height: 24),
+                  _buildMenu(context),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
 
-  // --- کامپوننت‌های UI ---
-
-  PreferredSizeWidget _buildAppBar() {
+PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: darkBg,
+      backgroundColor: AppColors.darkBg,
       elevation: 0,
       centerTitle: true,
       title: Text(
         'DevFlow',
         style: TextStyle(
-          color: primaryOrange,
+          color: AppColors.primaryOrange,
           fontSize: 22,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
         ),
       ),
+      // جایگزینی زنگوله با دکمه بازگشت به عقب
       leading: IconButton(
-        icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-        onPressed: () {},
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
       actions: [
         Padding(
@@ -142,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              color: surfaceColor,
+              color: AppColors.surfaceColor,
             ),
             child: IconButton(
               icon: const Icon(
@@ -158,18 +111,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard() {
+
+  Widget _buildProfileCard(userData) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       decoration: BoxDecoration(
-        color: surfaceColor,
+        color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         children: [
-          // آواتار کاربر
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -181,15 +134,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: CircleAvatar(
               radius: 50,
-              backgroundImage: AssetImage(_userData!.avatarUrl),
-              backgroundColor: darkBg,
+              backgroundImage: AssetImage(userData.avatarUrl),
+              backgroundColor: AppColors.darkBg,
             ),
           ),
           const SizedBox(height: 16),
-
-          // نام و ایمیل (داینامیک از روی مدل)
           Text(
-            _userData!.fullName,
+            userData.fullName,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -198,25 +149,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _userData!.email,
-            style: TextStyle(color: textMuted, fontSize: 14),
+            userData.email,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
           ),
           const SizedBox(height: 24),
-
-          // نشان‌ها (Badges)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildBadge(
                 icon: Icons.local_fire_department_rounded,
-                iconColor: primaryOrange,
-                label: 'روند ${_userData!.streakDays} روزه',
+                iconColor: AppColors.primaryOrange,
+                label: 'روند ${userData.streakDays} روزه',
               ),
-              if (_userData!.isProUser) ...[
+              if (userData.isProUser) ...[
                 const SizedBox(width: 12),
                 _buildBadge(
                   icon: Icons.circle,
-                  iconColor: const Color(0xFF34D399), // سبز
+                  iconColor: AppColors.successGreen,
                   label: 'کاربر حرفه‌ای',
                   iconSize: 10,
                 ),
@@ -237,9 +186,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: darkBg,
+        color: AppColors.darkBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -259,60 +208,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenu() {
+  Widget _buildMenu(BuildContext context) {
     return Column(
       children: [
         _buildMenuItem(
-          title: 'تنظیمات',
-          icon: Icons.settings_outlined,
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        _buildMenuItem(
-          title: 'گواهینامه‌های من',
-          icon: Icons.workspace_premium_outlined,
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        _buildMenuItem(
-          title: 'راهنما و پشتیبانی',
-          icon: Icons.help_outline_rounded,
+          title: 'مدیریت اشتراک‌ها',
+          icon: Icons.subscriptions_rounded,
           onTap: () {
-            // باز کردن صفحه ارسال تیکت
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const TicketScreen()),
-            );
+            Get.to(() => const SubscriptionScreen());
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildMenuItem(
-          title: 'ارتقای اشتراک و پلن‌ها',
-          icon: Icons.star_rounded,
-          iconColor: Colors.amber,
+          title: 'خریدهای من',
+          icon: Icons.shopping_bag_rounded,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SubscriptionScreen(),
-              ),
-            );
+            Get.to(() => const PurchasesScreen());
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildMenuItem(
-          title: 'خروج',
+          title: 'تیکت‌های من',
+          icon: Icons.support_agent_rounded,
+          onTap: () {
+            Get.to(() => const TicketScreen());
+          },
+        ),
+        const SizedBox(height: 16),
+        _buildMenuItem(
+          title: 'خروج از حساب',
           icon: Icons.logout_rounded,
-          iconColor: Colors.redAccent,
-          textColor: Colors.redAccent,
-          onTap: () {
-            // نمایش دیالوگ خروج
-            _showLogoutDialog();
-          },
+          iconColor: AppColors.errorRed,
+          textColor: AppColors.errorRed,
+          onTap: () => _showLogoutDialog(context),
         ),
       ],
     );
   }
+
 
   Widget _buildMenuItem({
     required String title,
@@ -327,19 +260,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: surfaceColor,
+          color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (iconColor ?? primaryOrange).withValues(alpha: 0.1),
+                color: (iconColor ?? AppColors.primaryOrange).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor ?? primaryOrange, size: 24),
+              child: Icon(icon, color: iconColor ?? AppColors.primaryOrange, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -354,22 +287,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: textMuted,
+              color: AppColors.textMuted,
               size: 16,
-            ), // فلش چپ برای RTL
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showLogoutDialog() {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: surfaceColor,
+          backgroundColor: AppColors.surfaceColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -379,20 +312,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           content: Text(
             'آیا مطمئن هستید که می‌خواهید از حساب خود خارج شوید؟',
-            style: TextStyle(color: textMuted),
+            style: TextStyle(color: AppColors.textMuted),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('لغو', style: TextStyle(color: textMuted)),
+              child: Text('لغو', style: TextStyle(color: AppColors.textMuted)),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // بستن دیالوگ
-                _logout(); // اجرای متد خروج و ریدایرکت
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                Get.offAll(() => const RegisterScreen());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                backgroundColor: AppColors.errorRed,
               ),
               child: const Text('خروج', style: TextStyle(color: Colors.white)),
             ),
