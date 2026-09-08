@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../home/screens/home_screen.dart';
 import 'login_screen.dart';
+import './otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,37 +21,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _register() async {
+Future<void> _register() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final password = _passwordController.text.trim();
 
     if (name.isEmpty || phone.isEmpty || password.isEmpty) {
-      Get.snackbar('خطا', 'لطفاً تمام فیلدها (نام، شماره و رمز عبور) را پر کنید.', backgroundColor: Colors.orange, colorText: Colors.white);
+      Get.snackbar('خطا', 'لطفاً تمام فیلدها را پر کنید.', backgroundColor: Colors.orange, colorText: Colors.white);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // ارسال درخواست ثبت‌نام به جنگو (شامل نام کاربر)
-      final response = await ApiClient().dio.post('auth/register/', data: {
-        'full_name': name,
+      // ۱. درخواست ارسال کد تایید (OTP)
+      final response = await ApiClient().dio.post('accounts/send-otp/', data: {
         'phone_number': phone,
-        'password': password,
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final token = response.data['token'] ?? response.data['access'];
-        
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
-
+        // ۲. هدایت کاربر به صفحه OTP و ارسال نام و پسورد به آن صفحه
         if (!mounted) return;
-        Get.offAll(() => const HomeScreen());
+        Get.to(() => OtpScreen(
+          phoneNumber: phone,
+          fullName: name,       // مهم: نام کاربر به صفحه بعد پاس داده می‌شود
+          password: password,   // مهم: رمز عبور به صفحه بعد پاس داده می‌شود
+        ));
       }
     } catch (e) {
-      Get.snackbar('خطا', 'ثبت‌نام انجام نشد. ممکن است شماره قبلاً ثبت شده باشد.', backgroundColor: AppColors.errorRed, colorText: Colors.white);
+      Get.snackbar('خطا', 'مشکلی در ارسال پیامک پیش آمد یا شماره نامعتبر است.', backgroundColor: AppColors.errorRed, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -1,4 +1,5 @@
 // lib/features/articles/controllers/article_controller.dart
+import 'dart:async'; // === برای استفاده از Timer اضافه شد ===
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
@@ -9,22 +10,29 @@ class ArticleController extends GetxController {
   var errorMessage = ''.obs;
   var articlesList = <ArticleModel>[].obs;
 
+  // === تایمر برای جلوگیری از اسپم درخواست ===
+  Timer? _debounce;
+
   @override
   void onInit() {
     super.onInit();
     fetchArticles();
   }
 
-  Future<void> fetchArticles() async {
+  // === افزودن پارامتر کوئری برای جستجو ===
+  Future<void> fetchArticles({String? query}) async {
     try {
       isLoading(true);
       errorMessage('');
       
-      // استفاده از سرویس متمرکز شبکه
-      final response = await ApiClient().dio.get('articles/');
+      String endpoint = 'articles/';
+      if (query != null && query.isNotEmpty) {
+        endpoint += '?search=$query'; // اتصال کلمه سرچ شده به آدرس
+      }
+
+      final response = await ApiClient().dio.get(endpoint);
 
       if (response.statusCode == 200) {
-        // چون Pagination فعال شده، دیتا داخل 'results' قرار دارد
         final List data = response.data['results'] ?? response.data;
         articlesList.value = data.map((a) => ArticleModel.fromJson(a)).toList();
       }
@@ -37,5 +45,24 @@ class ArticleController extends GetxController {
     } finally {
       isLoading(false);
     }
+  }
+
+  // === متد اجرا شدن جستجو با تایمر نیم‌ثانیه‌ای ===
+  void onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.length >= 3) {
+        fetchArticles(query: query);
+      } else if (query.isEmpty) {
+        fetchArticles(); // اگر فیلد خالی شد، کل لیست دوباره لود شود
+      }
+    });
+  }
+
+  @override
+  void onClose() {
+    _debounce?.cancel();
+    super.onClose();
   }
 }

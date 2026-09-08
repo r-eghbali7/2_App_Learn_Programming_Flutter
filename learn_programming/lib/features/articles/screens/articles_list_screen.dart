@@ -1,6 +1,8 @@
 // lib/features/articles/screens/articles_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../controllers/article_controller.dart';
 import '../models/article_model.dart';
 import 'article_detail_screen.dart';
@@ -10,7 +12,6 @@ class ArticlesListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // تزریق کنترلر مقالات
     final ArticleController controller = Get.put(ArticleController());
 
     final Color darkBg = const Color(0xFF12151C);
@@ -22,12 +23,9 @@ class ArticlesListScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: darkBg,
         body: SafeArea(
-          // استفاده از Obx برای آپدیت هوشمند UI
           child: Obx(() {
             if (controller.isLoading.value) {
-              return Center(
-                child: CircularProgressIndicator(color: primaryOrange),
-              );
+              return Center(child: SpinKitThreeBounce(color: primaryOrange, size: 30));
             }
 
             if (controller.errorMessage.value.isNotEmpty) {
@@ -35,27 +33,14 @@ class ArticlesListScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.wifi_off_rounded,
-                      color: Colors.white54,
-                      size: 48,
-                    ),
+                    const Icon(Icons.wifi_off_rounded, color: Colors.white54, size: 48),
                     const SizedBox(height: 16),
-                    Text(
-                      controller.errorMessage.value,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
+                    Text(controller.errorMessage.value, style: const TextStyle(color: Colors.white, fontSize: 14), textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => controller.fetchArticles(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryOrange,
-                      ),
-                      child: const Text(
-                        'تلاش مجدد',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: primaryOrange),
+                      child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -71,20 +56,18 @@ class ArticlesListScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     children: [
                       _buildPageHeader(),
+                      const SizedBox(height: 20),
+                      // === نوار جستجوی جدید مقالات ===
+                      _buildSearchBar(surfaceColor, controller),
                       const SizedBox(height: 24),
                       if (controller.articlesList.isEmpty)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: Text(
-                              'مقاله‌ای یافت نشد.',
-                              style: TextStyle(color: Colors.white54),
-                            ),
-                          ),
-                        )
+                        const Center(child: Padding(padding: EdgeInsets.all(20.0), child: Text('مقاله‌ای یافت نشد.', style: TextStyle(color: Colors.white54))))
                       else
-                        ...controller.articlesList.map(
-                          (article) => _buildArticleCard(article, surfaceColor),
+                        ...controller.articlesList.asMap().entries.map(
+                          (entry) => _buildArticleCard(entry.value, surfaceColor)
+                              .animate()
+                              .fade(duration: 400.ms, delay: (entry.key * 75).ms)
+                              .slideY(begin: 0.1, end: 0, duration: 400.ms),
                         ),
                     ],
                   ),
@@ -97,8 +80,6 @@ class ArticlesListScreen extends StatelessWidget {
     );
   }
 
-  // === متدهای UI ===
-
   Widget _buildTopBar(Color surfaceColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -106,33 +87,11 @@ class ArticlesListScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () {},
-            ),
+            decoration: BoxDecoration(color: surfaceColor, shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
+            child: IconButton(icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20), onPressed: () {}),
           ),
-          const Text(
-            'CodeGlass',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const CircleAvatar(
-            radius: 20,
-            backgroundImage: AssetImage('assets/images/avatar.jpg'),
-          ),
+          const Text('CodeGlass', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          const CircleAvatar(radius: 20, backgroundImage: AssetImage('assets/images/avatar.jpg')),
         ],
       ),
     );
@@ -142,23 +101,33 @@ class ArticlesListScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'آخرین مقالات',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        const Text('آخرین مقالات', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text(
-          'بینش‌ها و بروزرسانی‌ها از دنیای توسعه.',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 14,
-          ),
-        ),
+        Text('بینش‌ها و بروزرسانی‌ها از دنیای توسعه.', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
       ],
+    );
+  }
+
+  // === متد جدید برای رندر کردن فیلد جستجو در مقالات ===
+  Widget _buildSearchBar(Color surfaceColor, ArticleController controller) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: TextField(
+        onChanged: controller.onSearchChanged, // اتصال به متد سرچ کنترلر
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'جستجوی مقالات...',
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 14),
+          prefixIcon: Icon(Icons.search, color: Colors.white.withValues(alpha: 0.4)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
     );
   }
 
@@ -179,87 +148,39 @@ class ArticlesListScreen extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        // مسیریابی با GetX
         Get.to(() => ArticleDetailScreen(articleId: article.id));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 24),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
+        decoration: BoxDecoration(color: surfaceColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.05))),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.network(
-                article.imageUrl ??
-                    'https://via.placeholder.com/600x400/1E222D/FFFFFF/?text=No+Image',
-                width: double.infinity,
-                height: 160,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: double.infinity,
-                  height: 160,
-                  color: Colors.grey.shade900,
-                  child: const Icon(Icons.image, color: Colors.white24, size: 40),
-                ),
+                article.imageUrl ?? 'https://via.placeholder.com/600x400/1E222D/FFFFFF/?text=No+Image',
+                width: double.infinity, height: 160, fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(width: double.infinity, height: 160, color: Colors.grey.shade900, child: const Icon(Icons.image, color: Colors.white24, size: 40)),
               ),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: badgeColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                article.category,
-                style: TextStyle(
-                  color: badgeTextColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(20)),
+              child: Text(article.category, style: TextStyle(color: badgeTextColor, fontSize: 10, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
-            Text(
-              article.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(article.title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 8),
-            Text(
-              article.summary,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 13,
-                height: 1.6,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(article.summary, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, height: 1.6), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 16),
             const Row(
               children: [
                 Icon(Icons.arrow_back, color: Color(0xFFFF8C00), size: 16),
                 SizedBox(width: 6),
-                Text(
-                  'ادامه مطلب',
-                  style: TextStyle(
-                    color: Color(0xFFFF8C00),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text('ادامه مطلب', style: TextStyle(color: Color(0xFFFF8C00), fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
           ],

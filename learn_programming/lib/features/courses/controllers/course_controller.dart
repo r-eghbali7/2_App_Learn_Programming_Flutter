@@ -1,15 +1,16 @@
-// lib/features/courses/controllers/my_courses_controller.dart
+import 'dart:async'; // === برای استفاده از Timer اضافه شد ===
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../models/course_model.dart';
 
-
 class CourseController extends GetxController {
-  // متغیرهای وضعیت (State) که UI به آنها گوش می‌دهد
   var isLoading = true.obs;
   var errorMessage = ''.obs;
   var coursesList = <CourseModel>[].obs;
+
+  // === تایمر برای جلوگیری از ارسال اسپم درخواست‌ها (Debounce) ===
+  Timer? _debounce;
 
   @override
   void onInit() {
@@ -17,16 +18,21 @@ class CourseController extends GetxController {
     fetchCourses();
   }
 
-  Future<void> fetchCourses() async {
+  // === متد دریافت دوره‌ها تغییر کرد تا کوئری جستجو را بپذیرد ===
+  Future<void> fetchCourses({String? query}) async {
     try {
       isLoading(true);
       errorMessage('');
       
-      // استفاده از سرویس متمرکزی که ساختیم (نیازی به ذکر BaseUrl نیست)
-      final response = await ApiClient().dio.get('courses/list/');
+      // ساخت آدرس به صورت داینامیک
+      String endpoint = 'courses/list/';
+      if (query != null && query.isNotEmpty) {
+        endpoint += '?search=$query'; // ارسال پارامتر جستجو به جنگو
+      }
+
+      final response = await ApiClient().dio.get(endpoint);
 
       if (response.statusCode == 200) {
-        // نکته: در بک‌اند Pagination را فعال کردیم، پس دیتا داخل کلید 'results' است
         final List data = response.data['results'] ?? response.data;
         coursesList.value = data.map((c) => CourseModel.fromJson(c)).toList();
       }
@@ -40,9 +46,29 @@ class CourseController extends GetxController {
       isLoading(false);
     }
   }
+
+  // === متد جدید برای وصل شدن به فیلد جستجو ===
+  void onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    // صبر می‌کنیم تا کاربر ۵۰۰ میلی‌ثانیه تایپ نکند، سپس درخواست می‌زنیم
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.length >= 3) {
+        fetchCourses(query: query); // جستجو برای ۳ حرف یا بیشتر
+      } else if (query.isEmpty) {
+        fetchCourses(); // اگر فیلد خالی شد، همه دوره‌ها را دوباره لود کن
+      }
+    });
+  }
+
+  @override
+  void onClose() {
+    _debounce?.cancel();
+    super.onClose();
+  }
 }
 
-
+// ... کلاس MyCoursesController بدون تغییر می‌ماند
 
 class MyCoursesController extends GetxController {
   var isLoading = true.obs;

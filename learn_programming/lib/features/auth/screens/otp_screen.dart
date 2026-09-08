@@ -15,7 +15,7 @@ class OtpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // پیدا کردن کنترلری که در صفحه قبل ساخته بودیم
-    final AuthController controller = Get.find<AuthController>();
+    final AuthController controller = Get.put(AuthController());
 
     final defaultPinTheme = PinTheme(
       width: 52,

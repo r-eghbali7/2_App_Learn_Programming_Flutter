@@ -27,7 +27,9 @@ class MyCoursesScreen extends StatelessWidget {
           // استفاده از Obx
           child: Obx(() {
             if (controller.isLoading.value) {
-              return Center(child: CircularProgressIndicator(color: primaryOrange));
+              return Center(
+                child: CircularProgressIndicator(color: primaryOrange),
+              );
             }
 
             if (controller.errorMessage.value.isNotEmpty) {
@@ -42,8 +44,13 @@ class MyCoursesScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => controller.fetchMyCourses(),
-                      style: ElevatedButton.styleFrom(backgroundColor: primaryOrange),
-                      child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryOrange,
+                      ),
+                      child: const Text(
+                        'تلاش مجدد',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -52,7 +59,10 @@ class MyCoursesScreen extends StatelessWidget {
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -70,7 +80,7 @@ class MyCoursesScreen extends StatelessWidget {
                     style: TextStyle(color: textMuted, fontSize: 14),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // بررسی خالی بودن لیست
                   if (controller.myCoursesList.isEmpty)
                     Center(
@@ -85,7 +95,13 @@ class MyCoursesScreen extends StatelessWidget {
                   else
                     // نمایش لیست دوره‌ها
                     ...controller.myCoursesList.map(
-                      (course) => _buildCourseCard(course, surfaceColor, primaryOrange, successGreen, textMuted),
+                      (course) => _buildCourseCard(
+                        course,
+                        surfaceColor,
+                        primaryOrange,
+                        successGreen,
+                        textMuted,
+                      ),
                     ),
                 ],
               ),
@@ -183,29 +199,82 @@ class MyCoursesScreen extends StatelessWidget {
                 course.modulesText,
                 style: TextStyle(color: textMuted, fontSize: 12),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  // استفاده از GetX برای انتقال به صفحه جزئیات دوره
-                  Get.to(() => CourseDetailScreen(courseId: course.id));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Row(
-                  children: [
-                    Text(
-                      'ادامه',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  // === دکمه دریافت گواهینامه (فقط اگر ۱۰۰٪ شده باشد) ===
+                  if (course.isCompleted)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // باز کردن لینک دانلود گواهینامه
+                          // می‌توانید با استفاده از url_launcher مرورگر را باز کنید
+                          // یا عکسی که از مسیر api/courses/{course.id}/certificate می‌آید را دانلود کنید
+                          Get.snackbar(
+                            'تبریک!',
+                            'در حال آماده‌سازی گواهینامه شما...',
+                            backgroundColor: Colors.amber,
+                            colorText: Colors.black,
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 16,
+                          color: Colors.black87,
+                        ),
+                        label: const Text(
+                          'گواهینامه',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Colors.amber, // رنگ طلایی ویژه گواهینامه
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
                     ),
-                    SizedBox(width: 6),
-                    Icon(Icons.arrow_back_rounded, size: 16),
-                  ],
-                ),
+
+                  // === دکمه ادامه دوره ===
+                  ElevatedButton(
+                    onPressed: () {
+                      Get.to(() => CourseDetailScreen(courseId: course.id));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: themeColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          course.isCompleted ? 'مرور دوره' : 'ادامه',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_back_rounded, size: 16),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

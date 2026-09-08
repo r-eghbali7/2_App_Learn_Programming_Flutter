@@ -8,8 +8,7 @@ import '../../tickets/screens/ticket_screen.dart';
 import '../../subscriptions/screens/subscription_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../subscriptions/screens/purchases_screen.dart';
-
-
+import 'my_certificates_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -26,7 +25,9 @@ class ProfileScreen extends StatelessWidget {
         appBar: _buildAppBar(context),
         body: Obx(() {
           if (controller.isLoading.value) {
-            return Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+            return Center(
+              child: CircularProgressIndicator(color: AppColors.primaryOrange),
+            );
           }
 
           if (controller.errorMessage.value.isNotEmpty) {
@@ -34,12 +35,20 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(controller.errorMessage.value, style: TextStyle(color: AppColors.textMuted)),
+                  Text(
+                    controller.errorMessage.value,
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => controller.fetchUserProfile(),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                    child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryOrange,
+                    ),
+                    child: const Text(
+                      'تلاش مجدد',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -48,13 +57,21 @@ class ProfileScreen extends StatelessWidget {
 
           final userData = controller.userData.value;
           if (userData == null) {
-            return const Center(child: Text('کاربری یافت نشد.', style: TextStyle(color: Colors.white54)));
+            return const Center(
+              child: Text(
+                'کاربری یافت نشد.',
+                style: TextStyle(color: Colors.white54),
+              ),
+            );
           }
 
           return SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 children: [
                   _buildProfileCard(userData),
@@ -69,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.darkBg,
       elevation: 0,
@@ -110,7 +127,6 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
       ],
     );
   }
-
 
   Widget _buildProfileCard(userData) {
     return Container(
@@ -228,6 +244,16 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
         ),
         const SizedBox(height: 16),
         _buildMenuItem(
+          title: 'مدارک من',
+          icon: Icons.workspace_premium_rounded,
+          iconColor:
+              Colors.amber, // برای متمایز شدن می‌توان رنگ طلایی به آن داد
+          onTap: () {
+            Get.to(() => const MyCertificatesScreen());
+          },
+        ),
+        const SizedBox(height: 16),
+        _buildMenuItem(
           title: 'تیکت‌های من',
           icon: Icons.support_agent_rounded,
           onTap: () {
@@ -245,7 +271,6 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
       ],
     );
   }
-
 
   Widget _buildMenuItem({
     required String title,
@@ -269,10 +294,16 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (iconColor ?? AppColors.primaryOrange).withValues(alpha: 0.1),
+                color: (iconColor ?? AppColors.primaryOrange).withValues(
+                  alpha: 0.1,
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor ?? AppColors.primaryOrange, size: 24),
+              child: Icon(
+                icon,
+                color: iconColor ?? AppColors.primaryOrange,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(

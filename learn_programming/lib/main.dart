@@ -9,10 +9,8 @@ import 'main_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // لود کردن آدرس سرور از فایل .env
   await dotenv.load(fileName: ".env");
   
-  // بررسی لاگین بودن کاربر
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('access_token');
 
@@ -25,15 +23,17 @@ class DevFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // تغییر MaterialApp به GetMaterialApp
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'CodeGlass',
       theme: ThemeData(
         brightness: Brightness.dark,
-        fontFamily: 'Vazirmatn', // اگر فونت فارسی دارید اینجا اضافه کنید
+        fontFamily: 'Vazirmatn', 
       ),
-      // روتینگ هوشمند
+      // === تنظیم انیمیشن پیش‌فرض برای کل صفحات ===
+      defaultTransition: Transition.fadeIn, 
+      transitionDuration: const Duration(milliseconds: 400),
+      
       home: isLoggedIn ? const MainScreen() : const LandingScreen(),
     );
   }

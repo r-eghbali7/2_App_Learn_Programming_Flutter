@@ -45,7 +45,8 @@ class DashboardModel {
     return DashboardModel(
       activeProjects: json['active_projects'] ?? 0,
       openReviews: json['open_reviews'] ?? 0,
-      latestChanges: (json['latest_changes'] as List?)
+      latestChanges:
+          (json['latest_changes'] as List?)
               ?.map((e) => ChangeModel.fromJson(e))
               .toList() ??
           [],
