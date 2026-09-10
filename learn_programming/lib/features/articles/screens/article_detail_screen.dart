@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import '../../../core/network/api_client.dart';
 import '../models/article_model.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
@@ -27,12 +28,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   Future<void> _fetchArticleDetails() async {
     try {
-      final dio = Dio();
-      // آدرس اصلاح شده برای اجرای فلاتر روی Chrome
-      final response = await dio.get(
-        'http://127.0.0.1:8000/api/articles/${widget.articleId}/',
+      final response = await ApiClient().dio.get(
+        'articles/${widget.articleId}/',
       );
-
       if (response.statusCode == 200) {
         setState(() {
           article = ArticleModel.fromJson(response.data);
@@ -40,9 +38,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Dio Error: $e');
       setState(() {
-        errorMessage = 'خطا در دریافت اطلاعات. اتصال خود را بررسی کنید.';
+        errorMessage = 'خطا در دریافت اطلاعات مقاله.';
         isLoading = false;
       });
     }

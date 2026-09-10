@@ -68,7 +68,7 @@ class CourseController extends GetxController {
   }
 }
 
-// ... کلاس MyCoursesController بدون تغییر می‌ماند
+
 
 class MyCoursesController extends GetxController {
   var isLoading = true.obs;
@@ -85,22 +85,15 @@ class MyCoursesController extends GetxController {
     try {
       isLoading(true);
       errorMessage('');
-      
-      // فراخوانی اندپوینت اختصاصی که در جنگو ساختیم
-      // نکته: نیازی به پاس دادن دستی Token نیست، ApiClient خودش انجام می‌دهد.
+      // آدرس اصلاح‌شده منطبق با جنگو:
       final response = await ApiClient().dio.get('courses/list/my-courses/');
 
       if (response.statusCode == 200) {
-        // این اندپوینت چون با action نوشته شده بود و مستقیماً لیست را برمی‌گرداند (بدون Pagination)
         final List data = response.data;
         myCoursesList.value = data.map((c) => MyCourseModel.fromJson(c)).toList();
       }
     } catch (e) {
-      if (e is DioException) {
-        errorMessage('خطا در برقراری ارتباط. لطفاً اتصال خود را بررسی کنید.');
-      } else {
-        errorMessage('خطایی در دریافت دوره‌های شما رخ داد.');
-      }
+      errorMessage('خطا در دریافت دوره‌های شما.');
     } finally {
       isLoading(false);
     }
